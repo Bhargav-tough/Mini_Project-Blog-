@@ -106,7 +106,7 @@ app.post('/login', async (req, res) => {
             );
 
             res.cookie("token", token);
-            res.send("Logged in Successfully");
+            res.redirect("/profile")
 
         } 
         else {
@@ -119,12 +119,11 @@ app.post('/login', async (req, res) => {
 
 
 // profile with middleware
-app.get('/profile', isLoggedIn, (req, res) => {
-
-    res.send("Welcome to profile");
-
+app.get('/profile', isLoggedIn, async (req, res) => {
+    let user = await userModel.findOne({ email: req.user.email });
+console.log(user);
+    res.render("profile", { user });
 });
-
 
 // logout
 app.get('/logout', (req, res) => {
