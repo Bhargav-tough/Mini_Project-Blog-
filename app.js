@@ -8,95 +8,157 @@ const cookieParser = require('cookie-parser');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
+
 app.set('view engine', 'ejs');
 
+
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended:true }));
 app.use(cookieParser());
 
 
+
 const Port = 3000;
+const JWT_SECRET = "shhhhhh";
 
 
-// middleware
-function isLoggedIn(req, res, next) {
+
+
+// Middleware
+
+function isLoggedIn(req,res,next){
+
 
     let token = req.cookies.token;
 
-    if (!token) {
+
+    if(!token){
+
         return res.redirect("/login");
+
     }
 
-    let data = jwt.verify(token, "shhhhhh");
 
-    req.user = data;
+    try{
 
-    next();
+        let data = jwt.verify(token,JWT_SECRET);
+
+        req.user = data;
+
+        next();
+
+    }
+    catch(err){
+
+        res.redirect("/login");
+
+    }
+
 }
 
 
+
+
+
+
+
 // Home
-app.get('/', (req, res) => {
+
+app.get('/',(req,res)=>{
+
     res.render("index");
+
 });
 
 
-// Login page
-app.get('/login', (req, res) => {
+
+
+
+
+
+// Login Page
+
+app.get('/login',(req,res)=>{
+
     res.render("login");
+
 });
+
+
+
+
 
 
 
 // Register
 
-app.post('/register', async (req,res)=>{
+app.post('/register',async(req,res)=>{
 
-    const {username,name,age,email,password}=req.body;
+
+    const {
+        username,
+        name,
+        age,
+        email,
+        password
+    } = req.body;
+
 
 
     let existUser = await userModel.findOne({email});
 
+
+
     if(existUser){
+
         return res.send("User already exists");
+
     }
 
 
-    bcrypt.genSalt(10,(err,salt)=>{
 
-        bcrypt.hash(password,salt,async(err,hash)=>{
+    let salt = await bcrypt.genSalt(10);
 
 
-            let user = await userModel.create({
-
-                username,
-                name,
-                age,
-                email,
-                password:hash
-
-            });
+    let hash = await bcrypt.hash(password,salt);
 
 
 
-            let token = jwt.sign({
+    let user = await userModel.create({
 
-                email:user.email,
-                username:user._id
-
-            },
-            "shhhhhh");
-
-
-            res.cookie("token",token);
-
-            res.redirect("/profile");
-
-        });
+        username,
+        name,
+        age,
+        email,
+        password:hash
 
     });
 
+
+
+
+    let token = jwt.sign({
+
+        email:user.email,
+        id:user._id
+
+    },JWT_SECRET);
+
+
+
+
+    res.cookie("token",token);
+
+
+    res.redirect("/profile");
+
+
 });
+
+
+
+
+
 
 
 
@@ -106,49 +168,65 @@ app.post('/register', async (req,res)=>{
 app.post('/login',async(req,res)=>{
 
 
-    const {email,password}=req.body;
+    const {
+        email,
+        password
+    } = req.body;
+
 
 
     let user = await userModel.findOne({email});
 
 
+
     if(!user){
+
         return res.send("User not found");
+
     }
 
 
 
-    bcrypt.compare(password,user.password,(err,result)=>{
+
+    let result = await bcrypt.compare(
+        password,
+        user.password
+    );
 
 
-        if(result){
+
+    if(result){
 
 
-            let token = jwt.sign({
+        let token = jwt.sign({
 
-                email:user.email,
-                username:user._id
+            email:user.email,
+            id:user._id
 
-            },
-            "shhhhhh");
-
-
-            res.cookie("token",token);
-
-            res.redirect("/profile");
+        },JWT_SECRET);
 
 
-        }
-        else{
 
-            res.send("Wrong Password");
+        res.cookie("token",token);
 
-        }
 
-    });
+        res.redirect("/profile");
+
+
+    }
+    else{
+
+        res.send("Wrong Password");
+
+    }
+
 
 
 });
+
+
+
+
 
 
 
@@ -160,14 +238,26 @@ app.get('/profile',isLoggedIn,async(req,res)=>{
 
 
     let user = await userModel
-    .findOne({email:req.user.email})
+    .findOne({
+        email:req.user.email
+    })
     .populate("posts");
 
 
-    res.render("profile",{user});
+
+    res.render("profile",{
+
+        user,
+        posts:user.posts
+
+    });
+
 
 
 });
+
+
+
 
 
 
@@ -176,35 +266,207 @@ app.get('/profile',isLoggedIn,async(req,res)=>{
 
 // Create Post
 
-app.post('/post', isLoggedIn, async (req, res) => {
+app.post('/post',isLoggedIn,async(req,res)=>{
+
 
     let user = await userModel.findOne({
-        email: req.user.email
+
+        email:req.user.email
+
     });
 
-    let { content } = req.body;
 
 
     let post = await postModel.create({
-        user: user._id,
-        content: content
+
+        user:user._id,
+
+        content:req.body.content
+
     });
 
-
-    // if posts array doesn't exist, create it
-    if (!user.posts) {
-        user.posts = [];
-    }
 
 
     user.posts.push(post._id);
 
+
+
     await user.save();
 
 
-    res.redirect('/profile');
+
+    res.redirect("/profile");
+
 
 });
+
+
+
+
+
+
+
+
+
+// Like / Unlike
+
+app.get('/like/:id',isLoggedIn,async(req,res)=>{
+
+
+    let post = await postModel.findById(req.params.id);
+
+
+
+    if(!post.likes){
+
+        post.likes=[];
+
+    }
+
+
+
+    // if already liked remove
+
+    if(post.likes.includes(req.user.id)){
+
+
+        post.likes = post.likes.filter(
+
+            id => id.toString() !== req.user.id
+
+        );
+
+
+    }
+
+
+    // else add like
+
+    else{
+
+
+        post.likes.push(req.user.id);
+
+
+    }
+
+
+
+    await post.save();
+
+
+
+    res.redirect("/profile");
+
+
+});
+
+
+
+
+
+
+
+
+
+// Edit Page
+
+app.get('/edit/:id',isLoggedIn,async(req,res)=>{
+
+
+    let post = await postModel.findById(req.params.id);
+
+
+
+    res.render("edit",{
+
+        post
+
+    });
+
+
+
+});
+
+
+
+
+
+
+
+
+
+// Update Post
+
+app.post('/update/:id',isLoggedIn,async(req,res)=>{
+
+
+    await postModel.findByIdAndUpdate(
+
+        req.params.id,
+
+        {
+
+            content:req.body.content
+
+        }
+
+    );
+
+
+
+    res.redirect("/profile");
+
+
+});
+
+
+
+
+
+
+
+
+
+// Delete Post
+
+app.get('/delete/:id',isLoggedIn,async(req,res)=>{
+
+
+    let post = await postModel.findById(req.params.id);
+
+
+
+    await postModel.findByIdAndDelete(req.params.id);
+
+
+
+    await userModel.findByIdAndUpdate(
+
+        post.user,
+
+        {
+
+            $pull:{
+                posts:req.params.id
+            }
+
+        }
+
+    );
+
+
+
+    res.redirect("/profile");
+
+
+});
+
+
+
+
+
+
 
 
 
@@ -213,12 +475,17 @@ app.post('/post', isLoggedIn, async (req, res) => {
 app.get('/logout',(req,res)=>{
 
 
-    res.cookie("token","");
+    res.clearCookie("token");
+
 
     res.redirect("/login");
 
 
 });
+
+
+
+
 
 
 
