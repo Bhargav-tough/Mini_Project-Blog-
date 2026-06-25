@@ -10,6 +10,7 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const crypto = require('crypto');
 const path = require('path');
+const { upload } = require('./config/multerconfig');
 
 
 app.set('view engine', 'ejs');
@@ -18,18 +19,8 @@ app.set('view engine', 'ejs');
 app.use(express.json());
 app.use(express.urlencoded({ extended:true }));
 app.use(cookieParser());
+app.use(express.static('public'));
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, './public/images/uploads');
-  },
-  filename: function (req, file, cb) {
-    const fn = crypto.randomBytes(16).toString('hex') + path.extname(file.originalname);
-    cb(null, fn);
-  }
-});
-
-const upload = multer({ storage: storage })
 
 
 const Port = 3000;
@@ -69,14 +60,40 @@ function isLoggedIn(req,res,next){
     }
 
 }
+app.get('/profileupload',isLoggedIn,(req,res)=>{
+
+    res.render("profileupload");
+
+});
 
 
+app.post('/profileupload',
+isLoggedIn,
+upload.single('image'),
+async(req,res)=>{
 
 
+    console.log(req.file);
 
 
+    let user = await userModel.findOne({
+        email:req.user.email
+    });
 
-// Home
+
+    if(req.file){
+
+        user.profilepic = req.file.filename;
+
+    }
+
+
+    await user.save();
+
+
+    res.redirect("/profile");
+
+});
 
 app.get('/',(req,res)=>{
 
@@ -270,19 +287,6 @@ app.get('/profile',isLoggedIn,async(req,res)=>{
 
 });
 
-app.get('/test',isLoggedIn,async(req,res)=>{
-res.render("test");
-
-});
-
-app.post('/upload',isLoggedIn,upload.single('image'),async(req,res)=>{
-
-    if (!req.file) {
-        return res.status(400).send('No file uploaded.');
-    
-    }
-    res.send('File uploaded successfully: ' + req.file.filename);
-});
 
 
 

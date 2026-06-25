@@ -23,6 +23,25 @@
     <div class="flex justify-between items-center">
 
 
+    <div class="flex items-center gap-4">
+
+
+      <% if(user.profilepic === "default.jpg"){ %>
+
+<img 
+src="/images/default.jpg"
+class="w-16 h-16 rounded-full object-cover border"
+>
+
+<% } else { %>
+
+<img 
+src="/images/uploads/<%= user.profilepic %>"
+class="w-16 h-16 rounded-full object-cover border"
+>
+
+<% } %>
+
         <h1 class="text-3xl font-light">
 
             Hello,
@@ -34,16 +53,20 @@
         </h1>
 
 
-
-        <a href="/logout"
-            class="bg-red-500 px-5 py-2 rounded-md hover:bg-red-600">
-
-            Logout
-
-        </a>
-
-
     </div>
+
+
+
+
+    <a href="/logout"
+    class="bg-red-500 px-5 py-2 rounded-md hover:bg-red-600">
+
+        Logout
+
+    </a>
+
+
+</div>
 
 
 

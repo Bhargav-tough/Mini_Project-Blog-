@@ -2,26 +2,34 @@ const mongoose = require('mongoose');
 
 mongoose.connect('mongodb://localhost:27017/MiniProject');
 
+
 const userSchema = new mongoose.Schema({
 
-    username: String,
+    username:String,
 
-    name: String,
+    name:String,
 
-    age: Number,
+    age:Number,
 
-    email: String,
+    email:String,
 
-    password: String,
+    password:String,
 
-    posts: [
+
+    profilepic:{
+        type:String,
+        default:"default.jpg"
+    },
+
+
+    posts:[
         {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Post"
+            type:mongoose.Schema.Types.ObjectId,
+            ref:"Post"
         }
     ]
 
 });
 
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model('User',userSchema);
