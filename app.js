@@ -7,6 +7,9 @@ const postModel = require('./models/post');
 const cookieParser = require('cookie-parser');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const crypto = require('crypto');
+const path = require('path');
 
 
 app.set('view engine', 'ejs');
@@ -16,6 +19,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended:true }));
 app.use(cookieParser());
 
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './public/images/uploads');
+  },
+  filename: function (req, file, cb) {
+    const fn = crypto.randomBytes(16).toString('hex') + path.extname(file.originalname);
+    cb(null, fn);
+  }
+});
+
+const upload = multer({ storage: storage })
 
 
 const Port = 3000;
@@ -256,7 +270,19 @@ app.get('/profile',isLoggedIn,async(req,res)=>{
 
 });
 
+app.get('/test',isLoggedIn,async(req,res)=>{
+res.render("test");
 
+});
+
+app.post('/upload',isLoggedIn,upload.single('image'),async(req,res)=>{
+
+    if (!req.file) {
+        return res.status(400).send('No file uploaded.');
+    
+    }
+    res.send('File uploaded successfully: ' + req.file.filename);
+});
 
 
 
